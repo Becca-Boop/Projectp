@@ -1,358 +1,135 @@
 ﻿using Microsoft.Xna.Framework;
-
 using Microsoft.Xna.Framework.Graphics;
-
 using Microsoft.Xna.Framework.Input;
-
 using System;
-
 using System.Collections.Generic;
-
 using System.Linq;
-
 using System.Text;
-
 using System.Threading.Tasks;
-
 using System.Threading;
 
-
-
 namespace Project
-
 {
-
     public class Player : Thing
-
     {
-
-
-
-        public KeyboardState _currentKey;
-
-        public KeyboardState _previousKey;
-
         //int health; 
-
-
-
         int frames = 0;
-
         double totalElapsed;
-
+        double jumpStartTime;
         Game Game;
-
-        bool issliding = false;
-
         bool isjumping = false;
-
-        bool FloorCollide = true;
-
         const int gravity = 2;
-
         Vector2 velocity = Vector2.Zero;
-
-
-
-
+        bool pausing = false;
 
         public Player(Texture2D _texture, Vector2 _position, Rectangle _boundingBox, Game _game) : base(_texture, _position, _boundingBox)
-
         {
-
             //health = 100; 
-
             Game = _game;
-
+            Game.paused = false;
         }
-
-
-
-
 
         public virtual void Update(GameTime gameTime, SpriteBatch spriteBatch)
-
         {
-
-            _previousKey = _currentKey;
-
-            _currentKey = Keyboard.GetState();
-
-
-
-            float elapsed = (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-
-            totalElapsed += elapsed;
-
-            long delay = (long)totalElapsed / 80;
-
-
-
-            if (FloorCollide == false)
-
+            
+            if (!Game.paused)
             {
-
-                Position.Y += 5;
-
-            }
-
-            else if (Keyboard.GetState().IsKeyDown(Keys.Space) && Keyboard.GetState().IsKeyDown(Keys.A))
-
-            {
-
-                if (isjumping == false)
-
-                {
-
-                    issliding = false;
-
-                    isjumping = true;
-
-                    updatePosition(-1, 7, elapsed, 7);
-
-                    if (Keyboard.GetState().IsKeyUp(Keys.Space))
-
-                        isjumping = false;
-
-                }
-
-            }
-
-            else if (Keyboard.GetState().IsKeyDown(Keys.Space) && Keyboard.GetState().IsKeyDown(Keys.A))
-
-            {
-
-                issliding = false;
-
-                isjumping = true;
-
-                updatePosition(1, 5, elapsed, 7);
-
-                if (Keyboard.GetState().IsKeyUp(Keys.Space))
-
-                    isjumping = false;
-
-            }
-
-            else if (Keyboard.GetState().IsKeyDown(Keys.Space))
-
-            {
-
-                issliding = false;
-
-                isjumping = true;
-
-                updatePosition(0, 6, elapsed, 7);
-
-                if (Keyboard.GetState().IsKeyUp(Keys.Space))
-
-                    isjumping = false;
-
-            }
-
-
-
-
-
-            if (Keyboard.GetState().IsKeyDown(Keys.A) && Keyboard.GetState().IsKeyDown(Keys.LeftShift))
-
-            {
-
-                issliding = true;
-
-                if (isjumping == false)
-
-                {
-
-                    updatePosition(-1, 0, elapsed, 3);
-
-                }
-
-            }
-
-            else if (Keyboard.GetState().IsKeyDown(Keys.D) && Keyboard.GetState().IsKeyDown(Keys.LeftShift))
-
-            {
-
-                issliding = true;
-
-                if (isjumping == false)
-
-                {
-
-                    updatePosition(1, 12, elapsed, 3);
-
-                }
-
-            }
-
-            else if (Keyboard.GetState().IsKeyDown(Keys.A))
-
-            {
-
-                issliding = false;
-
-                if (isjumping == false)
-
-                {
-
-                    updatePosition(-1, 3, elapsed, 7);
-
-                }
-
-            }
-
-            else if (Keyboard.GetState().IsKeyDown(Keys.D))
-
-            {
-
-                issliding = false;
-
-                if (isjumping == false)
-
-                {
-
-                    updatePosition(1, 7, elapsed, 7);
-
-                }
-
-            }
-
-            else
-
-            {
-
+                // Handle timing issues
+                float elapsed = (float)gameTime.ElapsedGameTime.TotalMilliseconds;
+                totalElapsed += elapsed;
+                long delay = (long)totalElapsed / 80;
+
+                int heightOverFloor = GetHeightOverFloor(Game);
                 frames = 6;
 
+                // What does the player want to do?
+                int dir = 0;                
+                if (Keyboard.GetState().IsKeyDown(Keys.A)) dir--;
+                if (Keyboard.GetState().IsKeyDown(Keys.D)) dir++;
+                bool jump = Keyboard.GetState().IsKeyDown(Keys.Space) && heightOverFloor == 0;
+                bool falling = !isjumping && heightOverFloor > 0;
+                bool sliding = Keyboard.GetState().IsKeyDown(Keys.LeftShift) && heightOverFloor == 0;
+                if (jump)
+                {
+                    isjumping = true;
+                    jumpStartTime = totalElapsed;
+                }
+                else if (isjumping && jumpStartTime + 500 < totalElapsed)
+                {
+                    isjumping = false;
+                }
+
+                // Determine horizontal speed modifier
+                int div = 7;
+                if (sliding)
+                {
+                    div = 4;
+                }
+
+                // Vertical movement (ignores frames)
+                if (falling)
+                {
+                    int inc = (int)elapsed / 3;
+                    // Fall no further than floor
+                    if (inc > heightOverFloor) inc = heightOverFloor;
+                    BigBoundingBox.Y += inc;
+                    Position.Y += inc;
+                }
+                if (isjumping)
+                {
+                    double jumpTime = totalElapsed - jumpStartTime;
+                    int inc = (int)(elapsed * 20 / (jumpTime + 10));
+                    BigBoundingBox.Y -= inc;
+                    Position.Y -= inc;
+                }
+
+                if (dir != 0)
+                {
+                    // Select the frame
+                    int frameStart = dir == -1 ? 3 : 7;
+
+                    int frameCount = 3;
+                    if (sliding)
+                    {
+                        frameStart = dir == -1 ? 0 : 12;
+                        frameCount = 1;
+                    }
+                    frames = (isjumping || falling) ? frameStart : ((int)delay % frameCount) + frameStart;
+
+
+                    // Horizontal movement
+                    int inc = (int)elapsed / div * dir;
+                    // Dip a toe in
+                    BigBoundingBox.X += inc;
+                    if (this.IsColliding(Game))
+                    {
+                        // Hit something, so undo the change and stop
+                        BigBoundingBox.X -= inc;
+                    }
+                    else
+                    {
+                        Position.X += inc;
+                        delay = (long)totalElapsed / 80;
+                    }
+                }
+                // Now draw it
+                sourceRect = new Rectangle(28 * frames, 0, 28, 40);
             }
-
-
-
-            if (this.IsCollidingFloor(Game))
-
-            {
-
-                velocity.Y = 0;
-
-            }
-
-            else
-
-            {
-
-                velocity.Y += gravity * elapsed;
-
-            }
-
-            Position.Y += 5 * velocity.Y / elapsed;
-            BigBoundingBox.Y += (int)(5 * velocity.Y / elapsed);
-
-
-
-
-
-
-            sourceRect = new Rectangle(28 * frames, 0, 28, 40);
-
-
-
             spriteBatch.Draw(Texture, Position, sourceRect, Color.White);
 
-        }
-
-
-
-
-
-        private void updatePosition(int dir, int frameStart, float elapsed, int div)
-
-        {
-
-
-
-            if (this.IsCollidingFloor(Game))
-
+            if (Keyboard.GetState().IsKeyDown(Keys.Escape))
             {
-
-                FloorCollide = true;
-
-                int inc = (int)elapsed / div * dir;
-
-                BigBoundingBox.X += inc;
-
-
-
-                if (this.IsColliding(Game))
-
-                {
-
-                    BigBoundingBox.X -= inc;
-
-                }
-
-                else
-
-                {
-
-                    Position.X += inc;
-
-                    if (isjumping == true)
-
-                    {
-
-                        velocity.Y = -2;
-
-                        for (int i = 0; i < 5; i++)
-                        {
-
-                            Position.Y += (int)velocity.Y * 5 / elapsed;
-                            BigBoundingBox.Y += (int)(velocity.Y * 5 / elapsed);
-                        }
-
-
-
-                    }
-
-                    else if (issliding == true)
-
-                    {
-
-                        frames = frameStart;
-
-                    }
-
-                    else
-
-                    {
-
-                        long delay = (long)totalElapsed / 80;
-
-                        frames = ((int)delay % 3) + frameStart;
-
-                    }
-
-                }
-
+                pausing = true;
             }
-
             else
-
-            {
-
-                FloorCollide = false;
-
-            }
-
-
+                if (pausing)
+                {
+                    Game.paused = !Game.paused;
+                    pausing = false;
+                }
 
 
 
         }
-
-
-
-
-
     }
-
 }

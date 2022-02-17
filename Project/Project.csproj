@@ -43,7 +43,6 @@
   <ItemGroup>
     <Compile Include="Background.cs" />
     <Compile Include="Block.cs" />
-    <Compile Include="Floor.cs" />
     <Compile Include="Game.cs" />
     <Compile Include="Player.cs" />
     <Compile Include="Program.cs" />
