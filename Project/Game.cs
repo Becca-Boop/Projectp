@@ -20,12 +20,15 @@ namespace Project
         public Texture2D BlockSprite;
         private Texture2D background;
         public Texture2D PauseOverlay;
+        public Texture2D PauseOverlayController;
         public List<Player> Players = new List<Player>();
         public List<Block> Blocks = new List<Block>();
         public int frameCount = 0;
 
         public Game()
         {
+            int height;
+            int width;
             graphics = new GraphicsDeviceManager(this);
             graphics.PreferredBackBufferWidth = 1440;  
             // set this value to the desired width of your window
@@ -33,6 +36,11 @@ namespace Project
             // set this value to the desired height of your window 
             graphics.ApplyChanges();
             Content.RootDirectory = "Content";
+            Window.IsBorderless = false;
+            height = (graphics.GraphicsDevice.Adapter.CurrentDisplayMode.Height - 810) / 2;
+            width = (graphics.GraphicsDevice.Adapter.CurrentDisplayMode.Width - 1440) / 2;
+            Window.Position = new Point(width, height - 30);
+
         }
 
         public void Log(String s)
@@ -53,6 +61,8 @@ namespace Project
             BlockSprite = Content.Load<Texture2D>("block");
             background = Content.Load<Texture2D>("Background");
             PauseOverlay = Content.Load<Texture2D>("Pause Menu");
+            PauseOverlayController = Content.Load<Texture2D>("Pause Menu Controller");
+
 
             Players.Add(new Player(PlayerSprite, new Vector2(100, 530), new Rectangle(2, 2, 24, 36), this));
             Blocks.Add(new Block(BlockSprite, new Vector2(600, 540), new Rectangle(0, 0, 28, 40)));
@@ -72,8 +82,11 @@ namespace Project
 
         protected override void Update(GameTime gameTime)
         {
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.F1))
-                Exit();
+            if (paused == true)
+            {
+                if (GamePad.GetState(PlayerIndex.One).Buttons.Start == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+                    Exit();
+            }
 
             base.Update(gameTime);
         }
@@ -99,7 +112,12 @@ namespace Project
             Players[0].Update(gameTime, spriteBatch);
 
             if (paused)
-            spriteBatch.Draw(PauseOverlay, Vector2.Zero, Color.White);
+            {
+                if (Players[0].Controller)
+                    spriteBatch.Draw(PauseOverlayController, Vector2.Zero, Color.White);
+                else
+                    spriteBatch.Draw(PauseOverlay, Vector2.Zero, Color.White);
+            }
 
             spriteBatch.End();
 

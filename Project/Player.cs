@@ -21,6 +21,9 @@ namespace Project
         const int gravity = 2;
         Vector2 velocity = Vector2.Zero;
         bool pausing = false;
+        bool unpausing = false;
+        public bool Controller;
+
 
         public Player(Texture2D _texture, Vector2 _position, Rectangle _boundingBox, Game _game) : base(_texture, _position, _boundingBox)
         {
@@ -43,12 +46,15 @@ namespace Project
                 frames = 6;
 
                 // What does the player want to do?
-                int dir = 0;                
-                if (Keyboard.GetState().IsKeyDown(Keys.A)) dir--;
-                if (Keyboard.GetState().IsKeyDown(Keys.D)) dir++;
-                bool jump = Keyboard.GetState().IsKeyDown(Keys.Space) && heightOverFloor == 0;
+                int dir = 0;
+                Vector2 leftthumbstick = GamePad.GetState(0).ThumbSticks.Left;
+
+
+                if (Keyboard.GetState().IsKeyDown(Keys.A) || leftthumbstick.X < 0) dir--;
+                if (Keyboard.GetState().IsKeyDown(Keys.D) || leftthumbstick.X > 0) dir++;
+                bool jump = (Keyboard.GetState().IsKeyDown(Keys.Space) || GamePad.GetState(0).IsButtonDown(Buttons.A)) && heightOverFloor == 0;
                 bool falling = !isjumping && heightOverFloor > 0;
-                bool sliding = Keyboard.GetState().IsKeyDown(Keys.LeftShift) && heightOverFloor == 0;
+                bool sliding = (Keyboard.GetState().IsKeyDown(Keys.LeftShift) || GamePad.GetState(0).IsButtonDown(Buttons.LeftTrigger)) && heightOverFloor == 0;
                 if (jump)
                 {
                     isjumping = true;
@@ -117,17 +123,32 @@ namespace Project
             }
             spriteBatch.Draw(Texture, Position, sourceRect, Color.White);
 
-            if (Keyboard.GetState().IsKeyDown(Keys.Escape))
+            if (Keyboard.GetState().IsKeyDown(Keys.Escape) || GamePad.GetState(0).IsButtonDown(Buttons.Start))
             {
                 pausing = true;
+                if (GamePad.GetState(0).IsButtonDown(Buttons.Start))
+                    Controller = true;
+                else
+                    Controller = false;
             }
-            else
-                if (pausing)
-                {
-                    Game.paused = !Game.paused;
-                    pausing = false;
-                }
+            else if (pausing)
+            {                
+                Game.paused = true;
+                pausing = false;                
+            }
 
+            if (!pausing && Game.paused)
+            {
+                if (Keyboard.GetState().IsKeyDown(Keys.Enter) || GamePad.GetState(0).IsButtonDown(Buttons.A))
+                {
+                    unpausing = true;
+                }
+                else if (unpausing)
+                {
+                    Game.paused = false;
+                    unpausing = false;
+                }
+            }
 
 
         }
